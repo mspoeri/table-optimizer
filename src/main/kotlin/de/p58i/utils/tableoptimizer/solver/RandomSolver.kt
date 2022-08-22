@@ -4,7 +4,7 @@ import de.p58i.utils.tableoptimizer.model.Problem
 import de.p58i.utils.tableoptimizer.model.Solution
 import org.slf4j.LoggerFactory
 
-class RandomSolver: Solver {
+class RandomSolver : Solver {
 
     private val logger = LoggerFactory.getLogger(RandomSolver::class.java)
 
@@ -13,7 +13,8 @@ class RandomSolver: Solver {
 
         problem.groups.shuffled().forEach { group ->
             logger.debug("Search table for group [${group.name}]")
-            val tableToSeat = tablesToSeat.find{ table -> table.freeSeats() >= group.count()} ?: throw IllegalStateException("Too less seats")
+            val tableToSeat = tablesToSeat.find { table -> table.freeSeats() >= group.count().toInt() }
+                ?: throw IllegalStateException("Too less seats")
             logger.debug("Found table[${tableToSeat.name}] for group[${group.name}]")
             tableToSeat.groups.add(group)
         }

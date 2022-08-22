@@ -9,11 +9,23 @@ data class Group(
     fun count(): UInt = people.size.toUInt()
 
     override fun toString(): String {
-        val peopleList = people.joinToString(separator = " | ") { it }
+        val peopleList = people.joinToString(separator = "\n-") { it }
         return """
-            Group($name): 
-                $peopleList
+            **Group($name): 
+            $peopleList
         """.trimIndent()
     }
 
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is Group){
+            return false
+        }
+
+        return this.name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
 }
