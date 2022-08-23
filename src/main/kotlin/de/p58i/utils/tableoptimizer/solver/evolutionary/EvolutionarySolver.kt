@@ -18,7 +18,7 @@ class EvolutionarySolver(
     val pairingFunction: (solutionA: Solution, solutionB: Solution) -> Solution = ::defaultPairingFunction,
     val mutationFunction: (solution: Solution) -> Solution = ::defaultMutation,
 ) : Solver {
-
+    private val tribeShuffles = (generations / tribeGenerations ).toInt()
     private val tribeSize = populationSize / tribes
 
     companion object {
@@ -26,28 +26,36 @@ class EvolutionarySolver(
     }
 
     override fun solve(problem: Problem): Solution {
-
         var population =
             (1..populationSize.toInt()).map { randomSolution(problem).apply { score = fitnessFunction(problem, this) } }
                 .toMutableList()
 
-        repeat((generations / tribeGenerations).toInt()) { generation ->
-
-            runBlocking(Dispatchers.IO) {
+        for ( tribeShuffle in 0 until  tribeShuffles){
+            runBlocking(Dispatchers.Default) {
                 population = population.shuffled().chunked(tribeSize.toInt()).mapIndexed { index, tribe ->
+                    val tribeTermination = DefaultTribeTermination()
                     async {
                         var evolvedTribe = tribe.toMutableList()
-                        repeat(tribeGenerations.toInt()) { tribeGeneration ->
+                        for( tribeGeneration in 1 ..tribeGenerations.toInt() ) {
                             evolvedTribe = evolve(evolvedTribe, problem)
-                            logger.debug("(Tribe-$index)[${generation * tribeGenerations.toInt() + tribeGeneration}/$generations] ${evolvedTribe.first().score} (${
-                                evolvedTribe.sumOf { individual -> individual.score }
-                            })")
+
+                            if (logger.isDebugEnabled) {
+                                logger.debug("(Tribe-$index)[${tribeShuffle * tribeGenerations.toInt() + tribeGeneration}/$generations] ${evolvedTribe.first().score} (${
+                                    evolvedTribe.sumOf { individual -> individual.score }
+                                })")
+                            }
+                            if (tribeTermination.terminate(evolvedTribe)){
+                                break
+                            }
                         }
                         evolvedTribe
                     }
                 }.flatMap { it.await() }.sortedByDescending { it.score }.take(populationSize.toInt()).toMutableList()
             }
-            logger.debug("(Total)[${(generation + 1) * tribeGenerations.toInt()}/$generations] ${population.first().score} (${
+            if (population.first().score == problem.optimalScore){
+                break
+            }
+            logger.debug("(Total)[${(tribeShuffle + 1) * tribeGenerations.toInt()}/$generations] ${population.first().score} (${
                 population.sumOf { individual -> individual.score }
             })")
         }
@@ -63,7 +71,7 @@ class EvolutionarySolver(
         val malePopulation = shuffledPopulation.take(tribeSize.toInt() / 2)
         val femalePopulation = shuffledPopulation.takeLast(tribeSize.toInt() / 2)
 
-        runBlocking {
+        runBlocking(Dispatchers.Default) {
             population.addAll((0 until min(malePopulation.size, femalePopulation.size)).map { i ->
                 async {
                     val child = mutationFunction(

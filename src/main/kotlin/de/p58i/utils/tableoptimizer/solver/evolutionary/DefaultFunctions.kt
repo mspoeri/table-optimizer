@@ -5,6 +5,7 @@ import de.p58i.utils.tableoptimizer.model.Pairing
 import de.p58i.utils.tableoptimizer.model.Problem
 import de.p58i.utils.tableoptimizer.model.Solution
 import de.p58i.utils.tableoptimizer.model.Table
+import de.p58i.utils.tableoptimizer.model.TableAffinity
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.random.Random
@@ -53,8 +54,9 @@ fun defaultPairingFunction(solutionA: Solution, solutionB: Solution): Solution {
 fun defaultFitnessFunction(problem: Problem, solution: Solution): Double {
     val overPlacement = solution.tables.sumOf { min(it.freeSeats(), 0) }
     val pairingScore = problem.pairings.filter { it.applies(solution) }.sumOf { pairing -> pairing.score }
+    val tableScore = problem.tableAffinities.filter { it.applies(solution) }.sumOf { affinity -> affinity.score }
 
-    return (100 * overPlacement) + pairingScore
+    return (100 * overPlacement) + pairingScore + tableScore
 }
 
 fun removeDoubleGroups(tables: Set<Table>) {
@@ -83,6 +85,13 @@ private fun Pairing.applies(solution: Solution): Boolean {
 
 private fun Pairing.applies(table: Table): Boolean {
     return table.groups.flatMap { it.people }.containsAll(listOf(this.personA, this.personB))
+}
+
+private fun TableAffinity.applies(solution: Solution): Boolean {
+    return solution.tables.map { this.applies(it) }.find { it } ?: false
+}
+private fun TableAffinity.applies(table: Table): Boolean {
+    return table.name == this.tableName && table.groups.map { it.name }.contains(this.groupName)
 }
 
 private fun swapRandomGroup(solution: Solution) {
