@@ -3,6 +3,7 @@ package de.p58i.utils.tableoptimizer.solver.evolutionary
 import de.p58i.utils.tableoptimizer.model.Problem
 import de.p58i.utils.tableoptimizer.model.Solution
 import de.p58i.utils.tableoptimizer.solver.Solver
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -32,18 +33,21 @@ class EvolutionarySolver(
 
         repeat((generations / tribeGenerations).toInt()) { generation ->
 
-            population = population.shuffled().chunked(tribeSize.toInt()).flatMapIndexed { index, tribe ->
-                var evolvedTribe = tribe.toMutableList()
-                repeat(tribeGenerations.toInt()) { tribeGeneration ->
-                    evolvedTribe = evolve(evolvedTribe, problem)
-                    logger.debug("(Tribe-$index)[${generation * tribeGenerations.toInt() + tribeGeneration}]/$generations] ${evolvedTribe.first().score} (${
-                        evolvedTribe.sumOf { individual -> individual.score }
-                    })")
-                }
-                evolvedTribe
-            }.sortedBy { it.score }.take(populationSize.toInt()).toMutableList()
-
-            logger.debug("(Total)[${(generation + 1) * 50}]/$generations] ${population.first().score} (${
+            runBlocking(Dispatchers.IO) {
+                population = population.shuffled().chunked(tribeSize.toInt()).mapIndexed { index, tribe ->
+                    async {
+                        var evolvedTribe = tribe.toMutableList()
+                        repeat(tribeGenerations.toInt()) { tribeGeneration ->
+                            evolvedTribe = evolve(evolvedTribe, problem)
+                            logger.debug("(Tribe-$index)[${generation * tribeGenerations.toInt() + tribeGeneration}/$generations] ${evolvedTribe.first().score} (${
+                                evolvedTribe.sumOf { individual -> individual.score }
+                            })")
+                        }
+                        evolvedTribe
+                    }
+                }.flatMap { it.await() }.sortedByDescending { it.score }.take(populationSize.toInt()).toMutableList()
+            }
+            logger.debug("(Total)[${(generation + 1) * tribeGenerations.toInt()}/$generations] ${population.first().score} (${
                 population.sumOf { individual -> individual.score }
             })")
         }
@@ -56,8 +60,8 @@ class EvolutionarySolver(
     ): MutableList<Solution> {
         // assert(population.size.toUInt() == populationSize)
         val shuffledPopulation = population.shuffled()
-        val malePopulation = shuffledPopulation.take(populationSize.toInt() / 2)
-        val femalePopulation = shuffledPopulation.takeLast(populationSize.toInt() / 2)
+        val malePopulation = shuffledPopulation.take(tribeSize.toInt() / 2)
+        val femalePopulation = shuffledPopulation.takeLast(tribeSize.toInt() / 2)
 
         runBlocking {
             population.addAll((0 until min(malePopulation.size, femalePopulation.size)).map { i ->
@@ -72,6 +76,6 @@ class EvolutionarySolver(
         }
         population.sortByDescending { individual -> individual.score }
         //assert(fitnessFunction(problem,population.first()) >= topScore)
-        return population.take(populationSize.toInt()).toMutableList()
+        return population.take(tribeSize.toInt()).toMutableList()
     }
 }
