@@ -2,11 +2,12 @@ package de.p58i.utils.tableoptimizer.solver
 
 import de.p58i.utils.tableoptimizer.model.Problem
 import de.p58i.utils.tableoptimizer.model.Solution
-import org.slf4j.LoggerFactory
+import org.apache.logging.log4j.LogManager
+
 
 class RandomSolver : Solver {
 
-    private val logger = LoggerFactory.getLogger(RandomSolver::class.java)
+    private val logger = LogManager.getLogger(RandomSolver::class.java)
 
     override fun solve(problem: Problem): Solution {
         val tablesToSeat = problem.tables.map { it.copy(groups = HashSet()) }.toSet()

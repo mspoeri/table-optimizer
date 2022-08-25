@@ -1,11 +1,5 @@
 package de.p58i.utils.tableoptimizer
 
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.runApplication
+import de.p58i.utils.tableoptimizer.commands.OptimizeCommand
 
-@SpringBootApplication
-class TableOptimizerApplication
-
-fun main(args: Array<String>) {
-    runApplication<TableOptimizerApplication>(*args)
-}
+fun main(args: Array<String>) = OptimizeCommand().main(args)

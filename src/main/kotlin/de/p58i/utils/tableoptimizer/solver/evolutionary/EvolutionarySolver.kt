@@ -6,7 +6,7 @@ import de.p58i.utils.tableoptimizer.solver.Solver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import org.slf4j.LoggerFactory
+import org.apache.logging.log4j.LogManager
 import kotlin.math.min
 
 class EvolutionarySolver(
@@ -22,7 +22,7 @@ class EvolutionarySolver(
     private val tribeSize = populationSize / tribes
 
     companion object {
-        private val logger = LoggerFactory.getLogger(EvolutionarySolver::class.java)
+        private val logger = LogManager.getLogger(EvolutionarySolver::class.java)
     }
 
     override fun solve(problem: Problem): Solution {
